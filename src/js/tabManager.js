@@ -91,4 +91,25 @@ export class TabManager {
             });
         });
     }
+
+    static switchTab(tabName) {
+        // Cacher tous les contenus
+        const contents = ['contactsList', 'groupsList', 'broadcastList', 'archivedList'];
+        contents.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.classList.add('hidden');
+        });
+
+        // Afficher le contenu sélectionné sans modifier les styles
+        const selectedContent = document.getElementById(`${tabName}List`);
+        if (selectedContent) {
+            selectedContent.classList.remove('hidden');
+        }
+
+        // Mettre à jour le titre du panneau
+        const panelTitle = document.getElementById('panelTitle');
+        if (panelTitle) {
+            panelTitle.textContent = this.getTitleForTab(tabName);
+        }
+    }
 }

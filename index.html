@@ -13,6 +13,7 @@
 <body class="bg-gray-100 h-screen">
     <div class="flex h-full max-w-7xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
 
+        <!-- Sidebar Navigation -->
         <div class="flex flex-col gap-4 w-[90px] h-full justify-center items-center bg-[#efe7d7]">
             <div id="messagesBtn" class="flex flex-col w-[70px] h-[70px] justify-center items-center border-amber border-2 border-orange-300 bg-yellow-600 rounded-2xl cursor-pointer">
                 <i class="bx bxs-message-reply bx-flip-horizontal"></i> 
@@ -37,6 +38,7 @@
         </div>
 
 
+        
         <div class="w-80 bg-gray-50 border-r border-gray-200 flex flex-col">
             
             <div class="p-4 border-b border-gray-200">
@@ -46,30 +48,33 @@
             <div class="p-4 border-b border-gray-200">
                 <div class="relative">
                     <input type="text" 
+                           id="searchInput"
                            class="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-400" 
-                           placeholder="Rechercher...">
+                           placeholder="Rechercher..."
+                           onkeyup="handleSearchKeyPress(event)">
                     <i class='bx bx-search absolute left-3 top-2.5 text-gray-400'></i>
                 </div>
             </div>
 
-            <div id="addContactForm" class="hidden p-4 border-b border-gray-200 bg-blue-50">
+            <!-- Remplacer la partie du formulaire d'ajout de contact -->
+            <div id="addContactForm" class="hidden p-4 border-b border-gray-200 bg-orange-50">
                 <h3 class="text-sm font-semibold mb-3 text-black-800">Ajouter un contact</h3>
                 <div class="space-y-3">
                     <input type="text" 
                            id="contactName"
-                           class="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-sm outline-none focus:border-blue-500" 
+                           class="w-full px-3 py-2 bg-white border border-orange-300 rounded-lg text-sm outline-none focus:border-orange-500" 
                            placeholder="Nom du contact">
                     <input type="tel" 
                            id="contactPhone"
                            pattern="^(7[0578])[0-9]{7}$"
                            maxlength="9"
-                           class="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-sm outline-none focus:border-blue-500" 
+                           class="w-full px-3 py-2 bg-white border border-orange-300 rounded-lg text-sm outline-none focus:border-orange-500" 
                            placeholder="Numéro de téléphone (77/78/76/70/75)"
                            oninput="validatePhoneNumber(this)">
                     <div id="phoneError" class="text-red-500 text-xs hidden mt-1"></div>
                     <div class="flex gap-2">
                         <button onclick="addNewContact()" 
-                                class="flex-1 px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-white-600 text-sm">
+                                class="flex-1 px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 text-sm">
                             Ajouter
                         </button>
                         <button onclick="cancelAddContact()" 
@@ -80,36 +85,36 @@
                 </div>
             </div>
 
+            <!-- Contacts List -->
             <div id="contactsList" class="flex-1 overflow-y-auto">
             </div>
 
+            <!-- Groups List -->
             <div id="groupsList" class="hidden flex-1 overflow-y-auto">
-                <div class="p-4 border-b border-gray-200">
-                    <button id="createGroupBtn" 
-                            class="w-full py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg flex items-center justify-center gap-2">
-                        <i class='bx bxs-plus-circle'></i>
-                        <span>Créer un groupe</span>
-                    </button>
-                </div>
+                <!-- Le contenu sera généré par GroupManager.renderGroups() -->
             </div>
 
+            <!-- Broadcast List -->
             <div id="broadcastList" class="hidden flex-1 overflow-y-auto">
-                
                 <div class="flex-1 overflow-y-auto" id="broadcastContactsList">
                 </div>
-                <div class="p-4 border-t border-gray-200 bg-green-50">
-                   
+                <div class="p-4 border-t border-gray-200 bg-orange-50">
                 </div>
             </div>
 
+            <!-- Archived List -->
             <div id="archivedList" class="hidden flex-1 overflow-y-auto">
             </div>
         </div>
 
+        <!-- Chat Area -->
         <div class="flex-1 bg-gray-100 flex flex-col">
             <div id="chatHeader" class="bg-[#efe7d7] p-4 border-b-2 border-b-white flex items-center gap-3">
                 <div class="w-10 h-10 bg-gray-400 rounded-full flex items-center justify-center text-white font-bold"></div>
-                <div class="font-semibold text-gray-800">Selectionnnez un contact</div>
+                <div class="font-semibold text-gray-800 hover:text-orange-600 cursor-pointer group flex items-center gap-2" id="chatTitle">
+                    <span>Sélectionnez un contact</span>
+                    <i class='bx bx-chevron-down opacity-0 group-hover:opacity-100'></i>
+                </div>
                 <div class="ml-auto flex items-center gap-2">
                     <button class="w-9 h-9 border-amber border-2 border-orange-300 rounded-full flex items-center justify-center text-white transition-colors">
                         <i class='bx bxs-backspace bx-flip-vertical' style='color:#ff7b00'></i> 
@@ -122,21 +127,27 @@
                     <button class="w-9 h-9 border-amber border-2 border-black rounded-full flex items-center justify-center text-white transition-colors">
                         <i class='bx bxs-square' style='color:#000000'></i> 
                     </button>
-                    <button class="w-9 h-9 border-amber border-2 border-red-300 rounded-full flex items-center justify-center text-white transition-colors">
+                    <button onclick="handleDelete()" 
+                            id="deleteBtn"
+                            class="w-9 h-9 border-amber border-2 border-red-300 rounded-full flex items-center justify-center text-white transition-colors">
                         <i class='bx bxs-trash-alt' style='color:#ff4040'></i> 
+                    </button>
+                    <button onclick="handleLogout()" 
+                            class="w-9 h-9 border-amber border-2 border-gray-400 rounded-full flex items-center justify-center text-white transition-colors hover:bg-gray-100">
+                        <i class="fa-solid fa-right-from-bracket" style="color: #ff0000;"></i>
                     </button>
                 </div>
             </div>
 
-            <div id="Discuter" class="bg-[#efe7d7] flex-1 p-4">
-                <div id="messages-container" class="flex flex-col space-y-2">
+            <div id="Discuter" class="bg-[#efe7d7] flex-1 overflow-y-auto h-0 min-h-0">
+                <div id="messages-container" class="flex flex-col space-y-2 p-4">
                 </div>
             </div>
 
-            <div class="bg-white p-5 border-t border-gray-200 flex items-center gap-4 opacity-50 pointer-events-none">
+            <div class="bg-white p-5 border-t border-gray-200 flex items-center gap-4 opacity-50 pointer-events-none sticky bottom-0">
                 <input type="text" 
                        id="messageInput"
-                       class="flex-1 px-5 py-3 bg-gray-50 border border-gray-300 rounded-full text-sm outline-none focus:border-blue-400" 
+                       class="flex-1 px-5 py-3 bg-gray-50 border border-gray-300 rounded-full text-sm outline-none focus:border-orange-400" 
                        placeholder="Tapez votre message...">
                 <button id="sendButton"
                         class="w-11 h-11 bg-green-500 rounded-full flex items-center justify-center text-white hover:bg-green-600 transition-colors">
@@ -146,14 +157,16 @@
         </div>
     </div>
 
-    <div id="newGroupModal" class=" hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-xl w-96">
+    <!-- Modal: Créer un nouveau groupe -->
+    <div id="newGroupModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+        <div class="bg-white p-6 rounded-xl w-96 max-h-[80vh] overflow-y-auto">
             <h3 class="text-xl font-semibold mb-4">Créer un groupe</h3>
             <input type="text" 
                    id="groupName"
                    class="w-full px-4 py-2 mb-4 bg-white border border-gray-300 rounded-lg text-sm outline-none focus:border-orange-400" 
                    placeholder="Nom du groupe">
             <div class="max-h-60 overflow-y-auto mb-4 border rounded-lg" id="contactsForGroup">
+                <!-- Le contenu sera généré par GroupManager.showCreateGroupModal() -->
             </div>
             <div class="flex justify-end gap-2">
                 <button onclick="GroupManager.closeModal()" 
@@ -161,36 +174,143 @@
                     Annuler
                 </button>
                 <button onclick="GroupManager.createNewGroup()" 
-                        class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
+                        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600">
                     Créer
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="groupMembersModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-xl w-96">
+    <!-- Modal: Membres du groupe -->
+    <div id="groupMembersModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+        <div class="bg-white p-6 rounded-xl w-96 max-h-[80vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">Membres du groupe</h3>
+                <h3 class="text-xl font-semibold">Infos du groupe</h3>
                 <button onclick="closeGroupMembersModal()" class="text-gray-500 hover:text-gray-700">
                     <i class='bx bx-x text-2xl'></i>
                 </button>
             </div>
-            <div id="groupMembersList" class="max-h-60 overflow-y-auto">
+            
+            <!-- En-tête du groupe -->
+            <div class="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                <div class="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center text-white text-2xl font-bold group-avatar">
+                </div>
+                <div>
+                    <h4 class="font-semibold text-lg group-name"></h4>
+                    <p class="text-sm text-gray-500 group-count"></p>
+                </div>
+            </div>
+
+            <!-- Liste des membres -->
+            <div class="mb-4">
+                <h5 class="text-sm font-medium text-gray-800 mb-2">PARTICIPANTS</h5>
+                <div id="groupMembersList" class="space-y-2">
+                    <!-- Le contenu sera généré par GroupManager.renderGroupMembers() -->
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="border-t pt-4">
+                <button id="addParticipantBtn"
+                        class="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-orange-600">
+                    <i class='bx bx-user-plus text-xl'></i>
+                    Ajouter un participant
+                </button>
+                <button onclick="leaveGroup()" 
+                        class="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-lg flex items-center gap-3 text-red-600">
+                    <i class='bx bx-log-out text-xl'></i>
+                    Quitter le groupe
+                </button>
             </div>
         </div>
     </div>
 
-    <div id="notification" class="fixed top-4 right-4 max-w-xs bg-white rounded-lg shadow-lg border border-gray-200 transform transition-all duration-300 scale-0 opacity-0">
+    <!-- CORRECTION: Menu contextuel avec les bons IDs -->
+    <div id="memberContextMenu" class="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 hidden">
+        <button id="makeAdminBtn" 
+                class="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm">
+            <i class='bx bxs-crown text-yellow-500'></i>
+            <span class="admin-action-text">Nommer Admin</span>
+        </button>
+        <button id="removeMemberBtn" 
+                class="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center gap-2 text-sm text-red-600">
+            <i class='bx bx-user-minus text-red-500'></i>
+            <span>Retirer du groupe</span>
+        </button>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notification" class="fixed top-4 right-4 max-w-xs bg-white rounded-lg shadow-lg border border-gray-200 transform transition-all duration-300 scale-0 opacity-0 z-50">
         <div class="p-4 flex items-center gap-3">
             <div id="notificationIcon" class="text-2xl"></div>
             <div class="flex-1">
-                <div id="notificationMessage" class="text-sm text-gray-800"></div>
             </div>
             <button onclick="NotificationManager.hideNotification()" class="text-gray-400 hover:text-gray-600">
                 <i class='bx bx-x'></i>
             </button>
         </div>
     </div>
+
+    <!-- Scripts utilitaires pour le débogage -->
+    <script>
+        // Fonction pour fermer le modal des membres du groupe
+        function closeGroupMembersModal() {
+            const modal = document.getElementById('groupMembersModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // Fonction pour quitter un groupe (à implémenter)
+        function leaveGroup() {
+            const modal = document.getElementById('groupMembersModal');
+            const groupId = modal ? modal.dataset.groupId : null;
+            
+            if (groupId) {
+                console.log('🚪 Quitter le groupe:', groupId);
+                // Implémenter la logique de sortie du groupe
+                alert('Fonctionnalité "Quitter le groupe" à implémenter');
+            }
+        }
+
+        // Fonctions de débogage
+        window.debugGroupSystem = function() {
+            console.log('🔍 Debug du système de groupes:');
+            console.log('- GroupManager:', window.GroupManager);
+            console.log('- MessageManager:', window.MessageManager);
+            console.log('- DatabaseManager:', window.DatabaseManager);
+            
+            const contextMenu = document.getElementById('memberContextMenu');
+            const toggleBtn = document.getElementById('toggleAdminBtn');
+            const removeBtn = document.getElementById('removeMemberBtn');
+            
+            console.log('- Menu contextuel:', !!contextMenu);
+            console.log('- Bouton toggle admin:', !!toggleBtn);
+            console.log('- Bouton retirer membre:', !!removeBtn);
+            
+            if (contextMenu) {
+                console.log('- Member ID dans le menu:', contextMenu.dataset.memberId);
+                console.log('- Group ID dans le menu:', contextMenu.dataset.groupId);
+            }
+            
+            return { contextMenu, toggleBtn, removeBtn };
+        };
+
+        window.testGroupActions = function(memberId = 2, groupId = 1) {
+            console.log('🧪 Test des actions de groupe');
+            
+            if (window.GroupManager) {
+                console.log('Test toggleAdmin...');
+                GroupManager.toggleAdmin(memberId, groupId);
+                
+                setTimeout(() => {
+                    console.log('Test removeMember...');
+                    GroupManager.removeMember(memberId, groupId);
+                }, 2000);
+            } else {
+                console.error('❌ GroupManager non disponible');
+            }
+        };
+    </script>
 </body>
 </html>

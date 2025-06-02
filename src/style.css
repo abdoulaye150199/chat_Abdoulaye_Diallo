@@ -225,6 +225,14 @@
     }
 }
 
+#memberContextMenu {
+    position: fixed;
+    z-index: 1000;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
 @media (max-width: 768px) {
     .message-bubble {
@@ -235,4 +243,24 @@
     .messages-container {
         padding: 12px;
     }
+}
+#groupMembersModal {
+    z-index: 1000;
+}
+
+#memberContextMenu {
+    z-index: 1100;
+}
+
+.admin-action-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.flex:hover .admin-action-btn {
+    opacity: 1;
+}
+
+#groupMembersModal.flex {
+    display: flex !important;
 }

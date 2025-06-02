@@ -21,6 +21,15 @@ export class DatabaseManager {
         const defaultUsers = [
             {
                 id: 1,
+                name: "Admin",
+                phone: "782917770",
+                avatar: null,
+                status: "online",
+                archived: false,
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
                 name: "Toto",
                 phone: "+221123456789",
                 avatar: null,
@@ -29,7 +38,7 @@ export class DatabaseManager {
                 created_at: new Date().toISOString()
             },
             {
-                id: 2,
+                id: 3,
                 name: "MM",
                 phone: "+221987654321",
                 avatar: null,
@@ -43,7 +52,6 @@ export class DatabaseManager {
 
     static getAllUsers() {
         const users = JSON.parse(localStorage.getItem('users_table') || '[]');
-        // Ne retourner que les utilisateurs non archivés
         return users;
     }
 
@@ -75,15 +83,13 @@ export class DatabaseManager {
         return users.find(user => user.id === parseInt(userId));
     }
 
-    static updateUser(userId, userData) {
+    static updateUser(user) {
         const users = this.getAllUsers();
-        const userIndex = users.findIndex(user => user.id === userId);
-        if (userIndex !== -1) {
-            users[userIndex] = { ...users[userIndex], ...userData };
+        const index = users.findIndex(u => u.id === user.id);
+        if (index !== -1) {
+            users[index] = user;
             localStorage.setItem('users_table', JSON.stringify(users));
-            return users[userIndex];
         }
-        return null;
     }
 
     static createGroupsTable() {
@@ -91,42 +97,83 @@ export class DatabaseManager {
     }
 
     static getAllGroups() {
-        const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
-        return groups.filter(group => !group.archived);
+        return JSON.parse(localStorage.getItem('groups') || '[]');
     }
 
     static getArchivedGroups() {
-        const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
+        const groups = this.getAllGroups();
         return groups.filter(group => group.archived);
     }
 
+    // CORRECTION: Méthode pour obtenir l'ID utilisateur actuel de manière cohérente
+    static getCurrentUserId() {
+        // Essayer d'abord currentUser
+        const currentUserStr = localStorage.getItem('currentUser');
+        if (currentUserStr) {
+            try {
+                const user = JSON.parse(currentUserStr);
+                return parseInt(user.id) || user.id;
+            } catch (e) {
+                console.warn('⚠️ Erreur parsing currentUser:', e);
+            }
+        }
+        
+        // Puis essayer current_user
+        const currentUserOldStr = localStorage.getItem('current_user');
+        if (currentUserOldStr) {
+            try {
+                const user = JSON.parse(currentUserOldStr);
+                if (user.id === 'admin') {
+                    return 1; // ID par défaut pour l'admin
+                }
+                return parseInt(user.id) || user.id;
+            } catch (e) {
+                console.warn('⚠️ Erreur parsing current_user:', e);
+            }
+        }
+        
+        return 1; // ID par défaut
+    }
+
     static addGroup(groupData) {
-        const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
+        const groups = this.getAllGroups();
+        const currentUserId = this.getCurrentUserId();
+        
         const newGroup = {
             id: Date.now(),
-            ...groupData,
+            name: groupData.name,
+            members: groupData.members || [],
+            admins: groupData.admins || [currentUserId],
+            messages: [],
             archived: false,
-            created_at: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            createdBy: currentUserId
         };
+        
+        console.log('🔨 Création du groupe:', newGroup);
+        
         groups.push(newGroup);
-        localStorage.setItem('groups_table', JSON.stringify(groups));
+        localStorage.setItem('groups', JSON.stringify(groups));
         return newGroup;
     }
 
-    static getGroupById(groupId) {
-        const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
-        return groups.find(group => group.id === parseInt(groupId));
+    static updateGroup(updatedGroup) {
+        const groups = this.getAllGroups();
+        const index = groups.findIndex(g => g.id === updatedGroup.id);
+        
+        if (index !== -1) {
+            groups[index] = { ...groups[index], ...updatedGroup };
+            localStorage.setItem('groups', JSON.stringify(groups));
+            console.log('✅ Groupe mis à jour:', groups[index]);
+            return true;
+        }
+        console.error('❌ Groupe non trouvé pour mise à jour:', updatedGroup.id);
+        return false;
     }
 
-    static updateGroup(groupId, updateData) {
+    static getGroupById(groupId) {
         const groups = this.getAllGroups();
-        const groupIndex = groups.findIndex(group => group.id === parseInt(groupId));
-        if (groupIndex !== -1) {
-            groups[groupIndex] = { ...groups[groupIndex], ...updateData };
-            localStorage.setItem('groups_table', JSON.stringify(groups));
-            return groups[groupIndex];
-        }
-        return null;
+        return groups.find(g => g.id === parseInt(groupId));
     }
 
     static createMessagesTable() {
@@ -155,34 +202,58 @@ export class DatabaseManager {
         return messages.filter(msg => msg.user_id === parseInt(userId));
     }
 
+    // CORRECTION: Amélioration de la gestion des messages de groupe
+    static getGroupMessages(groupId) {
+        try {
+            // Récupérer les messages de groupe depuis group_messages_table
+            const groupMessages = JSON.parse(localStorage.getItem('group_messages_table') || '[]');
+            const messages = groupMessages.filter(message => 
+                parseInt(message.group_id) === parseInt(groupId)
+            ).sort((a, b) => 
+                new Date(a.created_at) - new Date(b.created_at)
+            );
+            
+            console.log(`💬 Messages du groupe ${groupId}:`, messages);
+            return messages;
+        } catch (e) {
+            console.error('❌ Erreur lors de la récupération des messages du groupe:', e);
+            return [];
+        }
+    }
+
+    // CORRECTION: Amélioration de l'ajout de messages de groupe
+    static addGroupMessage(groupId, message) {
+        try {
+            // Récupérer les messages existants
+            const allGroupMessages = JSON.parse(localStorage.getItem('group_messages_table') || '[]');
+            
+            const newMessage = {
+                id: Date.now(),
+                group_id: parseInt(groupId),
+                sender_id: parseInt(message.sender_id),
+                content: message.content,
+                created_at: new Date().toISOString(),
+                is_read: false
+            };
+            
+            console.log('💾 Ajout du message de groupe:', newMessage);
+            
+            // Ajouter le nouveau message
+            allGroupMessages.push(newMessage);
+            localStorage.setItem('group_messages_table', JSON.stringify(allGroupMessages));
+            
+            console.log('✅ Message de groupe sauvegardé');
+            return newMessage;
+        } catch (e) {
+            console.error('❌ Erreur lors de l\'ajout du message au groupe:', e);
+            return null;
+        }
+    }
+
     static createGroupMessagesTable() {
-        localStorage.setItem('group_messages_table', JSON.stringify([]));
-    }
-
-    static getAllGroupMessages() {
-        return JSON.parse(localStorage.getItem('group_messages_table') || '[]');
-    }
-
-    static addGroupMessage(messageData) {
-        const messages = this.getAllGroupMessages();
-        const newMessage = {
-            id: Date.now(),
-            ...messageData,
-            created_at: new Date().toISOString(),
-            timestamp: new Date().toLocaleTimeString()
-        };
-        messages.push(newMessage);
-        localStorage.setItem('group_messages_table', JSON.stringify(messages));
-        return newMessage;
-    }
-
-    static getMessagesByGroupId(groupId) {
-        const messages = this.getAllGroupMessages();
-        return messages.filter(msg => msg.group_id === parseInt(groupId));
-    }
-
-    static createGroupMembersTable() {
-        localStorage.setItem('group_members_table', JSON.stringify([]));
+        if (!localStorage.getItem('group_messages_table')) {
+            localStorage.setItem('group_messages_table', '[]');
+        }
     }
 
     static getAllGroupMembers() {
@@ -223,22 +294,84 @@ export class DatabaseManager {
         localStorage.setItem('group_members_table', JSON.stringify(filteredMembers));
     }
 
-    // MÉTHODES UTILITAIRES
+    static getGroupMember(groupId, userId) {
+        const members = JSON.parse(localStorage.getItem('group_members_table') || '[]');
+        return members.find(m => m.group_id === groupId && m.user_id === userId);
+    }
+
+    static updateGroupMemberStatus(groupId, userId, isAdmin) {
+        const members = this.getAllGroupMembers();
+        const memberIndex = members.findIndex(m => 
+            m.group_id === parseInt(groupId) && m.user_id === parseInt(userId)
+        );
+
+        if (memberIndex !== -1) {
+            members[memberIndex].is_admin = isAdmin;
+            localStorage.setItem('group_members_table', JSON.stringify(members));
+            return members[memberIndex];
+        }
+        return null;
+    }
+
+    // CORRECTION: Méthodes simplifiées pour la gestion des admins
+    static makeAdmin(groupId, userId) {
+        const group = this.getGroupById(groupId);
+        if (!group) return false;
+
+        if (!group.admins) {
+            group.admins = [];
+        }
+
+        if (!group.admins.includes(parseInt(userId))) {
+            group.admins.push(parseInt(userId));
+            return this.updateGroup(group);
+        }
+        return false;
+    }
+
+    static removeAdmin(groupId, userId) {
+        const group = this.getGroupById(groupId);
+        if (!group || !group.admins) return false;
+
+        const userIdInt = parseInt(userId);
+        if (group.admins.includes(userIdInt)) {
+            group.admins = group.admins.filter(id => id !== userIdInt);
+            return this.updateGroup(group);
+        }
+        return false;
+    }
+
+    // MÉTHODES UTILITAIRES - CORRECTION
     static getLastMessage(userId) {
         const messages = this.getMessagesByUserId(userId);
         if (messages.length === 0) return null;
         return messages[messages.length - 1];
     }
 
+    // CORRECTION: Méthode pour obtenir le dernier message d'un groupe
     static getLastGroupMessage(groupId) {
-        const messages = this.getMessagesByGroupId(groupId);
+        const messages = this.getGroupMessages(groupId);
         if (messages.length === 0) return null;
         return messages[messages.length - 1];
+    }
+
+    // CORRECTION: Messages par groupe (alias pour compatibilité)
+    static getMessagesByGroupId(groupId) {
+        return this.getGroupMessages(groupId);
     }
 
     static getUnreadCount(userId) {
         const messages = this.getMessagesByUserId(userId);
         return messages.filter(msg => !msg.is_from_me && !msg.is_read).length;
+    }
+
+    // NOUVEAU: Compteur de messages non lus pour les groupes
+    static getGroupUnreadCount(groupId) {
+        const messages = this.getGroupMessages(groupId);
+        const currentUserId = this.getCurrentUserId();
+        return messages.filter(msg => 
+            parseInt(msg.sender_id) !== parseInt(currentUserId) && !msg.is_read
+        ).length;
     }
 
     static markMessagesAsRead(userId) {
@@ -252,6 +385,22 @@ export class DatabaseManager {
         localStorage.setItem('messages_table', JSON.stringify(updatedMessages));
     }
 
+    // NOUVEAU: Marquer les messages de groupe comme lus
+    static markGroupMessagesAsRead(groupId) {
+        const currentUserId = this.getCurrentUserId();
+        const allGroupMessages = JSON.parse(localStorage.getItem('group_messages_table') || '[]');
+        
+        const updatedMessages = allGroupMessages.map(msg => {
+            if (parseInt(msg.group_id) === parseInt(groupId) && 
+                parseInt(msg.sender_id) !== parseInt(currentUserId)) {
+                return { ...msg, is_read: true };
+            }
+            return msg;
+        });
+        
+        localStorage.setItem('group_messages_table', JSON.stringify(updatedMessages));
+    }
+
     static archiveItem(id, type) {
         if (type === 'contact') {
             const users = this.getAllUsers();
@@ -261,11 +410,11 @@ export class DatabaseManager {
                 localStorage.setItem('users_table', JSON.stringify(users));
             }
         } else if (type === 'group') {
-            const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
+            const groups = this.getAllGroups();
             const groupIndex = groups.findIndex(group => group.id === id);
             if (groupIndex !== -1) {
                 groups[groupIndex].archived = true;
-                localStorage.setItem('groups_table', JSON.stringify(groups));
+                localStorage.setItem('groups', JSON.stringify(groups));
             }
         }
     }
@@ -279,11 +428,11 @@ export class DatabaseManager {
                 localStorage.setItem('users_table', JSON.stringify(users));
             }
         } else if (type === 'group') {
-            const groups = JSON.parse(localStorage.getItem('groups_table') || '[]');
+            const groups = this.getAllGroups();
             const groupIndex = groups.findIndex(group => group.id === id);
             if (groupIndex !== -1) {
                 groups[groupIndex].archived = false;
-                localStorage.setItem('groups_table', JSON.stringify(groups));
+                localStorage.setItem('groups', JSON.stringify(groups));
             }
         }
     }
@@ -308,5 +457,142 @@ export class DatabaseManager {
             return true;
         }
         return false;
+    }
+
+    static deleteUser(userId) {
+        const users = this.getAllUsers();
+        const filteredUsers = users.filter(user => user.id !== userId);
+        localStorage.setItem('users_table', JSON.stringify(filteredUsers));
+    }
+
+    static deleteGroup(groupId) {
+        const groups = this.getAllGroups();
+        const filteredGroups = groups.filter(group => group.id !== groupId);
+        localStorage.setItem('groups', JSON.stringify(filteredGroups));
+        
+        // Supprimer aussi les messages du groupe
+        const allGroupMessages = JSON.parse(localStorage.getItem('group_messages_table') || '[]');
+        const filteredMessages = allGroupMessages.filter(msg => parseInt(msg.group_id) !== parseInt(groupId));
+        localStorage.setItem('group_messages_table', JSON.stringify(filteredMessages));
+    }
+
+    // NOUVELLES MÉTHODES UTILITAIRES POUR UNE MEILLEURE GESTION
+
+    static createGroupMembersTable() {
+        if (!localStorage.getItem('group_members_table')) {
+            localStorage.setItem('group_members_table', '[]');
+        }
+    }
+
+    // Méthode pour nettoyer les données corrompues
+    static cleanupDatabase() {
+        try {
+            // Vérifier et corriger les groupes
+            const groups = this.getAllGroups();
+            const cleanedGroups = groups.filter(group => group && group.id && group.name);
+            localStorage.setItem('groups', JSON.stringify(cleanedGroups));
+
+            // Vérifier et corriger les messages de groupe
+            const groupMessages = JSON.parse(localStorage.getItem('group_messages_table') || '[]');
+            const validGroupIds = cleanedGroups.map(g => g.id);
+            const cleanedMessages = groupMessages.filter(msg => 
+                msg && msg.group_id && validGroupIds.includes(parseInt(msg.group_id))
+            );
+            localStorage.setItem('group_messages_table', JSON.stringify(cleanedMessages));
+
+            console.log('🧹 Base de données nettoyée');
+        } catch (e) {
+            console.error('❌ Erreur lors du nettoyage de la base de données:', e);
+        }
+    }
+
+    // Méthode pour obtenir les statistiques d'un groupe
+    static getGroupStats(groupId) {
+        const group = this.getGroupById(groupId);
+        if (!group) return null;
+
+        const messages = this.getGroupMessages(groupId);
+        const currentUserId = this.getCurrentUserId();
+        
+        return {
+            memberCount: group.members.length,
+            adminCount: group.admins ? group.admins.length : 0,
+            messageCount: messages.length,
+            unreadCount: messages.filter(msg => 
+                parseInt(msg.sender_id) !== parseInt(currentUserId) && !msg.is_read
+            ).length,
+            lastActivity: messages.length > 0 ? messages[messages.length - 1].created_at : group.createdAt
+        };
+    }
+
+    // Méthode pour vérifier si un utilisateur est admin d'un groupe
+    static isUserGroupAdmin(groupId, userId) {
+        const group = this.getGroupById(groupId);
+        if (!group || !group.admins) return false;
+        return group.admins.includes(parseInt(userId));
+    }
+
+    // Méthode pour vérifier si un utilisateur est membre d'un groupe
+    static isUserGroupMember(groupId, userId) {
+        const group = this.getGroupById(groupId);
+        if (!group || !group.members) return false;
+        return group.members.includes(parseInt(userId));
+    }
+
+    // CORRECTION: Méthode pour obtenir tous les groupes d'un utilisateur
+    static getUserGroups(userId) {
+        const groups = this.getAllGroups();
+        return groups.filter(group => 
+            group.members && group.members.includes(parseInt(userId))
+        );
+    }
+
+    // CORRECTION: Méthode pour rechercher des groupes par nom
+    static searchGroups(searchTerm, userId = null) {
+        let groups = this.getAllGroups();
+        
+        if (userId) {
+            groups = groups.filter(group => 
+                group.members && group.members.includes(parseInt(userId))
+            );
+        }
+        
+        if (!searchTerm || searchTerm.trim() === '') {
+            return groups;
+        }
+        
+        const term = searchTerm.toLowerCase();
+        return groups.filter(group => 
+            group.name.toLowerCase().includes(term)
+        );
+    }
+
+    // Méthode pour exporter les données (pour debug/backup)
+    static exportData() {
+        return {
+            users: this.getAllUsers(),
+            groups: this.getAllGroups(),
+            messages: this.getAllMessages(),
+            groupMessages: JSON.parse(localStorage.getItem('group_messages_table') || '[]'),
+            groupMembers: this.getAllGroupMembers(),
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    // Méthode pour importer des données (pour restore/debug)
+    static importData(data) {
+        try {
+            if (data.users) localStorage.setItem('users_table', JSON.stringify(data.users));
+            if (data.groups) localStorage.setItem('groups', JSON.stringify(data.groups));
+            if (data.messages) localStorage.setItem('messages_table', JSON.stringify(data.messages));
+            if (data.groupMessages) localStorage.setItem('group_messages_table', JSON.stringify(data.groupMessages));
+            if (data.groupMembers) localStorage.setItem('group_members_table', JSON.stringify(data.groupMembers));
+            
+            console.log('✅ Données importées avec succès');
+            return true;
+        } catch (e) {
+            console.error('❌ Erreur lors de l\'importation:', e);
+            return false;
+        }
     }
 }

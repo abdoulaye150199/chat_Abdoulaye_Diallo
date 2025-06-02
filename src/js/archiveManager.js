@@ -84,34 +84,55 @@ export class ArchiveManager {
         }
     }
 
-    static async archiveContact(contactId) {
+    static archiveContact(contactId) {
         if (!contactId) return;
-
-        const contactElement = document.querySelector(`[data-contact-id="${contactId}"]`);
-        if (!contactElement) return;
-
-        contactElement.style.transition = 'all 0.5s ease';
-        contactElement.style.overflow = 'hidden';
         
-        requestAnimationFrame(() => {
-            contactElement.style.transform = 'translateX(100%)';
-            contactElement.style.opacity = '0';
-            contactElement.style.maxHeight = `${contactElement.offsetHeight}px`;
+        // Trouver l'élément du contact dans la liste
+        const contactElement = document.querySelector(`[data-contact-id="${contactId}"]`);
+        
+        // Animation de disparition
+        if (contactElement) {
+            contactElement.style.transition = 'all 0.3s ease';
+            contactElement.style.overflow = 'hidden';
             
-            setTimeout(() => {
+            requestAnimationFrame(() => {
+                contactElement.style.transform = 'translateX(-100%)';
+                contactElement.style.opacity = '0';
                 contactElement.style.maxHeight = '0';
-                contactElement.style.padding = '0';
-                contactElement.style.margin = '0';
-                contactElement.style.border = 'none';
                 
                 setTimeout(() => {
-                    DatabaseManager.archiveContact(contactId);
-                    ContactManager.renderContacts();
-                    this.showArchivedList();
-                    MessageManager.clearChat();
-                }, 500);
-            }, 300);
-        });
+                    // Logique d'archivage
+                    const contact = DatabaseManager.getUserById(contactId);
+                    if (contact) {
+                        contact.archived = true;
+                        DatabaseManager.updateUser(contact);
+                        
+                        // Effacer le chat actif
+                        MessageManager.clearChat();
+                        
+                        // Mettre à jour les listes
+                        MessageManager.updateContactsList();
+                        this.showArchivedList();
+                        
+                        // Afficher la notification
+                        NotificationManager.show('Contact archivé avec succès', 'success');
+                    }
+                }, 300);
+            });
+        } else {
+            // Si l'élément n'est pas trouvé, effectuer l'archivage sans animation
+            const contact = DatabaseManager.getUserById(contactId);
+            if (contact) {
+                contact.archived = true;
+                DatabaseManager.updateUser(contact);
+                
+                MessageManager.clearChat();
+                MessageManager.updateContactsList();
+                this.showArchivedList();
+                
+                NotificationManager.show('Contact archivé avec succès', 'success');
+            }
+        }
     }
 
     static unarchiveContact(contactId) {
