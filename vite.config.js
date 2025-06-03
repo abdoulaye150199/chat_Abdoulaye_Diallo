@@ -1,15 +1,18 @@
+import { defineConfig } from 'vite'
+
 export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
     rollupOptions: {
       input: {
-        main: './index.html'
+        main: './index.html',
+        login: './login.html'
       }
     }
   },
-  // Éviter les rechargements automatiques en production
+  // Configuration du serveur de développement
   server: {
     hmr: false
   }
-});
+})
