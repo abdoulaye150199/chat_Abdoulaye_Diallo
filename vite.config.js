@@ -1,9 +1,15 @@
-// vite.config.js
-import { defineConfig } from 'vite';
-
 export default defineConfig({
-  base: './', // important pour que les chemins relatifs fonctionnent en production
+  base: './',
   build: {
-    outDir: 'dist', // dossier de sortie
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      }
+    }
   },
+  // Éviter les rechargements automatiques en production
+  server: {
+    hmr: false
+  }
 });
