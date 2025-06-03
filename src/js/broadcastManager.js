@@ -2,6 +2,7 @@ import { DatabaseManager } from './databaseManager.js';
 import { MessageManager } from './messageManager.js';
 
 export class BroadcastManager {
+    
     static broadcasts = [];
     static selectedContacts = [];
 
